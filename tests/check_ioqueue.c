@@ -1,13 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <check.h>
 #include "ioqueue.h"
 
 #define Q_SIZE 5
-#define fail_if(condition, format, ...) if (condition) fprintf(stderr, format "\n", ##__VA_ARGS__)
-#define fail_unless(condition, format, ...) fail_if(!(condition), format, ##__VA_ARGS__)
 
-int main()
+START_TEST(test_ioqueue)
 {
     ioq *q = ioq_new(Q_SIZE);
     ioq_node *node = q->input_p;
@@ -48,8 +47,36 @@ int main()
     fail_unless(IOQ_NODES_READY(q) == 0, "IOQ_NODES_READY : %d/%d", IOQ_NODES_READY(q), 0);
     fail_unless(IOQ_EMPTY(q), "IOQ_EMPTY : %d/%d", IOQ_EMPTY(q), 0);
 
-    return EXIT_SUCCESS;
+    return;
 
 sockerr:
-    return EXIT_FAILURE;
+    fail("IOQ_WRITE_NV");
+}
+END_TEST
+
+Suite *local_suite(void)
+{
+    Suite *s  = suite_create(__FILE__);
+    TCase *tc = tcase_create("ioqueue");
+
+    tcase_add_test(tc, test_ioqueue);
+
+    suite_add_tcase(s, tc);
+    return s;
+}
+
+int main()
+{
+    SRunner *sr;
+    Suite *s;
+    int failed;
+
+    s = local_suite();
+    sr = srunner_create(s);
+    srunner_run_all(sr, CK_NORMAL);
+
+    failed = srunner_ntests_failed(sr);
+    srunner_free(sr);
+
+    return (failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
