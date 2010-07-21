@@ -60,26 +60,9 @@ typedef struct _ioq ioq;
         total += (IOQ_GET_NV(q)+__iter)->iov_len;             \
 } while (false)
 
-#define IOQ_WRITE_NV(q, fd, onsockerror) do { \
-    ssize_t _bytes_written;                                                                    \
-    size_t _bytes_expected, _nodes_ready = IOQ_NODES_READY(q);                                 \
-    IOQ_BYTES_EXPECTED((q), _bytes_expected);                                                  \
-    if ( ( _bytes_written = writev( (fd), IOQ_GET_NV(q), _nodes_ready ) ) < _bytes_expected )  \
-        switch (_bytes_written) {                                                              \
-            case -1:                                                                           \
-                goto onsockerror;                                                              \
-            default:                                                                           \
-                while ( ( _bytes_written -= IOQ_GET_NV(q)->iov_len ) > 0 )                     \
-                        IOQ_FIN_WRITE((q), 1);                                                 \
-                if ( _bytes_written < 0 ) {                                                    \
-                    IOQ_GET_NV(q)->iov_base += IOQ_GET_NV(q)->iov_len + _bytes_written;        \
-                    IOQ_GET_NV(q)->iov_len   = -_bytes_written;                                \
-                }                                                                              \
-        }                                                                                      \
-    else                                                                                       \
-        IOQ_FIN_WRITE((q), _nodes_ready);                                                      \
-} while (false)
+typedef void (*sockerror_cb_p_t)(void *);
 
+void ioq_write_nv( ioq *q, int fd, sockerror_cb_p_t onsockerror, void *onsockerror_arg);
 ioq *ioq_new(size_t size);
 void ioq_free(ioq *q);
 
