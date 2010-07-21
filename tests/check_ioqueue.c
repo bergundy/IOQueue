@@ -47,6 +47,11 @@ START_TEST(test_ioqueue)
 
     fail_unless(IOQ_NODES_READY(q) == 4, "IOQ_NODES_READY : %d/%d", IOQ_NODES_READY(q), 4);
     fail_unless(IOQ_NODES_FREE(q) == 0, "IOQ_NODES_FREE : %d/%d", IOQ_NODES_FREE(q), 0);
+    node = q->output_p;
+    q->output_p = q->output_p->next;
+    fail_unless(IOQ_NODES_READY(q) == 3, "IOQ_NODES_READY : %d/%d", IOQ_NODES_READY(q), 3);
+    fail_unless(IOQ_NODES_USED(q) == 4, "IOQ_NODES_USED : %d/%d", IOQ_NODES_READY(q), 4);
+    q->output_p = node;
     IOQ_BYTES_EXPECTED(q, i);
     fail_unless(i == sizeof("baba1")*4 - 4, "IOQ_BYTES_EXPECTED : %d/%d", i, sizeof("baba1")*4 - 4 );
     ioq_write_nv(q, 1, sockerr, NULL);

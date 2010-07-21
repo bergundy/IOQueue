@@ -32,6 +32,9 @@ typedef struct _ioq ioq;
 #define IOQ_NODES_READY(q) ( (q)->input_p - (q)->output_p->next > 0 ? (q)->input_p - (q)->output_p->next \
     : (q)->nodes_end - (q)->output_p )
 
+#define IOQ_NODES_USED(q)  ( (q)->input_p - (q)->output_p->next > 0 ? (q)->input_p - (q)->output_p->next \
+    : ( (q)->input_p - (q)->nodes_begin + 1) + ( (q)->nodes_end - (q)->output_p ) )
+
 #define IOQ_PUT_NV(q, d, l, af) (       \
     (q)->input_p->vec->iov_base = (d),  \
     (q)->input_p->vec->iov_len  = (l),  \
