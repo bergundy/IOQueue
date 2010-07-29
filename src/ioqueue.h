@@ -1,67 +1,49 @@
 #ifndef _IOQUEUE_H
 #define _IOQUEUE_H
 
-#include <stdbool.h>
-#include <errno.h>
 #include <sys/uio.h>
+
+#include <arrayqueue.h>
 
 struct _ioq_node {
     struct iovec *vec;
-    bool   autofree;
-    struct _ioq_node *next;
+    int    autofree;
 };
 
-typedef struct _ioq_node ioq_node;
-
-struct _ioq {
-    ioq_node *input_p;
-    ioq_node *output_p;
-    ioq_node *nodes_begin;
-    ioq_node *nodes_end;
-};
+DEFINE_STRUCT_QUEUE(_ioq, struct _ioq_node);
 
 typedef struct _ioq ioq;
+typedef struct _ioq_node ioq_node;
 
-#define IOQ_FULL(q)        ( (q)->input_p == (q)->output_p )
+#define IOQ_NODES_READY(q) ( (q)->used ? ( (q)->front <= (q)->rear ? (q)->size - (q)->rear : (q)->used ) : 0 )
 
-#define IOQ_NODES_FREE(q)  ( (q)->output_p - (q)->input_p >= 0 ? (q)->output_p - (q)->input_p \
-    : (q)->nodes_end - (q)->input_p + (q)->output_p - (q)->nodes_begin + 1 )
+#define IOQ_PUT_NV(q, d, l, af) (             \
+    AQUEUE_FRONT_NV(q)->vec->iov_base = (d),  \
+    AQUEUE_FRONT_NV(q)->vec->iov_len  = (l),  \
+    AQUEUE_FRONT_NV(q)->autofree = (af),      \
+    AQUEUE_FIN_PUT(q),                        \
+    1 )
 
-#define IOQ_EMPTY(q)       ( (q)->input_p == (q)->output_p->next )
+#define IOQ_PUT(q, d, l, af) ( AQUEUE_FULL(q) ? 0 : IOQ_PUT_NV(q, d, l, af) )
 
-#define IOQ_NODES_READY(q) ( (q)->input_p - (q)->output_p->next > 0 ? (q)->input_p - (q)->output_p->next \
-    : (q)->nodes_end - (q)->output_p )
+#define IOQ_GET_NV(q) (AQUEUE_REAR_NV(q)->vec)
 
-#define IOQ_NODES_USED(q)  ( (q)->input_p - (q)->output_p->next > 0 ? (q)->input_p - (q)->output_p->next \
-    : ( (q)->input_p - (q)->nodes_begin + 1) + ( (q)->nodes_end - (q)->output_p ) )
+#define IOQ_GET(q)    (AQUEUE_EMPTY(q) ? NULL : IOQ_GET_NV(q))
 
-#define IOQ_PUT_NV(q, d, l, af) (       \
-    (q)->input_p->vec->iov_base = (d),  \
-    (q)->input_p->vec->iov_len  = (l),  \
-    (q)->input_p->autofree     = (af),  \
-    (q)->input_p = (q)->input_p->next,  \
-    true )
-
-#define IOQ_PUT(q, d, l, af) ( IOQ_FULL(q) ? false : IOQ_PUT_NV(q, d, l, af) )
-
-#define IOQ_GET_NV(q) ( (q)->output_p->next->vec )
-
-#define IOQ_GET(q) ( IOQ_EMPTY(q) ? NULL : IOQ_GET_NV(q) )
-
-#define IOQ_FIN_WRITE(q, n) do { \
-    size_t __iter;                                 \
-    for ( __iter = 0; __iter < (n); ++__iter ) {   \
-        (q)->output_p = (q)->output_p->next;       \
-        if ( (q)->output_p->autofree )             \
-            free( (q)->output_p->vec->iov_base );  \
-    }                                              \
-} while (false)
+#define IOQ_FIN_WRITE(q, n) do {                        \
+    size_t __iter;                                      \
+    for ( __iter = 0; __iter < (n); ++__iter ) {        \
+        if ( AQUEUE_REAR_NV(q)->autofree )              \
+            free(AQUEUE_REAR_NV(q)->vec->iov_base);     \
+        AQUEUE_FIN_GET(q);                              \
+    }                                                   \
+} while (0)
 
 #define IOQ_BYTES_EXPECTED(q, total) do { \
     size_t __iter; total = 0;                                 \
     for ( __iter = 0; __iter < IOQ_NODES_READY(q); ++__iter ) \
         total += (IOQ_GET_NV(q)+__iter)->iov_len;             \
-} while (false)
+} while (0)
 
 ssize_t ioq_write_nv(ioq *q, int fd);
 ioq *ioq_new(size_t size);

@@ -1,36 +1,33 @@
 #include <stdlib.h>
+
 #include "ioqueue.h"
 
 ioq *ioq_new(size_t size)
 {
     ioq *q = NULL;
-    ioq_node *p = NULL;
-    size_t i;
+    struct iovec *iov;
+    register size_t i;
 
     if ( ( q = (ioq *)malloc(sizeof(ioq)) ) == NULL )
         return NULL;
 
-    if ( ( q->nodes_begin = (ioq_node *)malloc( sizeof(ioq) * (size) ) ) == NULL )
+    if ( ( q->nodes = (ioq_node *)malloc( sizeof(ioq_node) * (size) ) ) == NULL )
         goto nodes_malloc_error;
 
-    if ( ( q->nodes_begin->vec = (struct iovec *)malloc( sizeof(struct iovec) * (size) ) ) == NULL )
+    if ( ( iov = (struct iovec *)malloc( sizeof(struct iovec) * (size) ) ) == NULL )
         goto iovec_malloc_error;
 
-    p = q->input_p = q->nodes_begin;
+    for (i = 0; i < size; ++i)
+        q->nodes[i].vec = iov+i;
 
-    for ( i = 1; i < size; ++i ) {
-        p = p->next = q->nodes_begin + i;
-        p->vec      = q->nodes_begin->vec + i;
-    }
-        
-    q->output_p = q->nodes_end = p;
-    q->nodes_end->next = q->nodes_begin;
+    q->size = size;
+    q->rear = q->front = 0;
+    q->used = 0;
 
     return q;
 
 iovec_malloc_error:
-    free(q->nodes_begin);
-
+    free(q->nodes);
 nodes_malloc_error:
     free(q);
     return NULL;
@@ -38,8 +35,8 @@ nodes_malloc_error:
 
 void ioq_free(ioq *q)
 {
-    free(q->nodes_begin->vec);
-    free(q->nodes_begin);
+    IOQ_FIN_WRITE(q, q->used);
+    free(q->nodes[0].vec);
     free(q);
 }
 
