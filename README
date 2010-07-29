@@ -1,0 +1,8 @@
+IOQUEUE:
+
+A queue (buffer) library for event driven applications.
+
+Makes Dealing with async writes easier.
+Uses writev to minimize system calls.
+
+Depends on arrayqueue.h (http://github.com/bergundy/arrayqueue)
