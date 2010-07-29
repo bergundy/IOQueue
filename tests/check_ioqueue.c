@@ -6,12 +6,6 @@
 
 #define Q_SIZE 5
 
-int write_failed = 0;
-
-void sockerr() {
-    write_failed++;
-}
-
 START_TEST(test_ioqueue)
 {
     ioq *q = ioq_new(Q_SIZE);
@@ -54,8 +48,7 @@ START_TEST(test_ioqueue)
     q->output_p = node;
     IOQ_BYTES_EXPECTED(q, i);
     fail_unless(i == sizeof("baba1")*4 - 4, "IOQ_BYTES_EXPECTED : %d/%d", i, sizeof("baba1")*4 - 4 );
-    ioq_write_nv(q, 1, sockerr, NULL);
-    fail_if(write_failed, "ioq_write_nv");
+    fail_if(ioq_write_nv(q, 1) < 0, "ioq_write_nv");
     fail_unless(IOQ_NODES_READY(q) == 0, "IOQ_NODES_READY : %d/%d", IOQ_NODES_READY(q), 0);
     fail_unless(IOQ_EMPTY(q), "IOQ_EMPTY : %d/%d", IOQ_EMPTY(q), 0);
 
