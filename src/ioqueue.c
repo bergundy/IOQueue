@@ -43,23 +43,29 @@ void ioq_free(ioq *q)
     free(q);
 }
 
-void ioq_write_nv( ioq *q, int fd, sockerror_cb_p_t onsockerror, void *onsockerror_arg)
+ssize_t ioq_write_nv(ioq *q, int fd)
 {
-    ssize_t _bytes_written;
-    size_t _bytes_expected, _nodes_ready = IOQ_NODES_READY(q);
-    IOQ_BYTES_EXPECTED((q), _bytes_expected);
-    if ( ( _bytes_written = writev( (fd), IOQ_GET_NV(q), _nodes_ready ) ) < _bytes_expected )
-        switch (_bytes_written) {
+    ssize_t bytes_written;
+    size_t  bytes_expected, nodes_ready = IOQ_NODES_READY(q);
+    ssize_t nodes_written = 0;
+    IOQ_BYTES_EXPECTED(q, bytes_expected);
+    if ( ( bytes_written = writev(fd, IOQ_GET_NV(q), nodes_ready) ) < bytes_expected )
+        switch (bytes_written) {
             case -1:
-                onsockerror(onsockerror_arg);
+                return -1;
             default:
-                while ( ( _bytes_written -= IOQ_GET_NV(q)->iov_len ) > 0 )
-                        IOQ_FIN_WRITE((q), 1);
-                if ( _bytes_written < 0 ) {
-                    IOQ_GET_NV(q)->iov_base += IOQ_GET_NV(q)->iov_len + _bytes_written;
-                    IOQ_GET_NV(q)->iov_len   = -_bytes_written;
+                while ( ( bytes_written -= IOQ_GET_NV(q)->iov_len ) > 0 ) {
+                    IOQ_FIN_WRITE(q, 1);
+                    ++nodes_written;
                 }
+                if ( bytes_written < 0 ) {
+                    IOQ_GET_NV(q)->iov_base += IOQ_GET_NV(q)->iov_len + bytes_written;
+                    IOQ_GET_NV(q)->iov_len   = -bytes_written;
+                }
+                return nodes_written;
         }
-    else
-        IOQ_FIN_WRITE((q), _nodes_ready);
+    else {
+        IOQ_FIN_WRITE((q), nodes_ready);
+        return nodes_ready;
+    }
 }
