@@ -63,7 +63,7 @@ typedef struct _ioq ioq;
         total += (IOQ_GET_NV(q)+__iter)->iov_len;             \
 } while (false)
 
-void ioq_write_nv(ioq *q, int fd);
+ssize_t ioq_write_nv(ioq *q, int fd);
 ioq *ioq_new(size_t size);
 void ioq_free(ioq *q);
 
