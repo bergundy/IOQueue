@@ -2,11 +2,11 @@
  * =====================================================================================
  * @file     check_ioqueue.c
  * @brief    test suite for libioqueue functions and macros.
- * @date     08/09/2010
- * @author   Roey Berman, (royb@walla.net.il), Walla!
+ * @date     07/05/2010
+ * @author   Roey Berman, (roey.berman@gmail.com)
  * @version  1.0
  *
- * Copyright (c) 2010, Walla! (www.walla.co.il)
+ * Copyright (c) 2010, Roey Berman, (roeyb.berman@gmail.com)
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -18,15 +18,15 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *    This product includes software developed by Walla!.
- * 4. Neither the name of Walla! nor the
+ *    This product includes software developed by Roey Berman.
+ * 4. Neither the name of Roey Berman nor the
  *    names of its contributors may be used to endorse or promote products
  *    derived from this software without specific prior written permission.
  * 
- * THIS SOFTWARE IS PROVIDED BY WALLA ''AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY ROEY BERMAN ''AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL WALLA BE LIABLE FOR ANY
+ * DISCLAIMED. IN NO EVENT SHALL ROEY BERMAN BE LIABLE FOR ANY
  * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
