@@ -1,4 +1,4 @@
-LIBIOQUEUE_VERSION = 0:1:0
+LIBIOQUEUE_VERSION = 1:0:0
 
 lib_LTLIBRARIES       = libioqueue.la
 libioqueue_la_SOURCES = ioqueue.c

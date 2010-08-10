@@ -1,24 +1,62 @@
+/**
+ * =====================================================================================
+ * @file     ioqueue.c
+ * @brief    A queue (buffer) library for event driven applications.
+ * @date     08/09/2010
+ * @author   Roey Berman, (royb@walla.net.il), Walla!
+ * @version  1.0
+ *
+ * Copyright (c) 2010, Walla! (www.walla.co.il)
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *    This product includes software developed by Walla!.
+ * 4. Neither the name of Walla! nor the
+ *    names of its contributors may be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY WALLA ''AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL WALLA BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * =====================================================================================
+ */
+
 #include <stdlib.h>
 
 #include "ioqueue.h"
 
 ioq *ioq_new(size_t size)
 {
-    ioq *q = NULL;
-    struct iovec *iov;
     register size_t i;
+    struct iovec *vec = NULL;
+    ioq *q = NULL;
 
     if ( ( q = (ioq *)malloc(sizeof(ioq)) ) == NULL )
         return NULL;
 
-    if ( ( q->nodes = (ioq_node *)malloc( sizeof(ioq_node) * (size) ) ) == NULL )
+    if ( ( q->nodes = (ioq_node *)malloc( sizeof(ioq_node) * size ) ) == NULL )
         goto nodes_malloc_error;
 
-    if ( ( iov = (struct iovec *)malloc( sizeof(struct iovec) * (size) ) ) == NULL )
-        goto iovec_malloc_error;
+    if ( ( vec = (struct iovec *)malloc(sizeof(struct iovec) * size) ) == NULL )
+        goto vec_malloc_error;
 
     for (i = 0; i < size; ++i)
-        q->nodes[i].vec = iov+i;
+        q->nodes[i].vec = vec+i;
 
     q->size = size;
     q->rear = q->front = 0;
@@ -26,7 +64,7 @@ ioq *ioq_new(size_t size)
 
     return q;
 
-iovec_malloc_error:
+vec_malloc_error:
     free(q->nodes);
 nodes_malloc_error:
     free(q);
@@ -36,33 +74,35 @@ nodes_malloc_error:
 void ioq_free(ioq *q)
 {
     IOQ_FIN_WRITE(q, q->used);
-    free(q->nodes[0].vec);
+    free(q->nodes);
     free(q);
 }
 
-ssize_t ioq_write_nv(ioq *q, int fd)
+ssize_t ioq_write(ioq *q, int fd)
 {
-    ssize_t bytes_written;
-    size_t  bytes_expected, nodes_ready = IOQ_NODES_READY(q);
-    ssize_t nodes_written = 0;
-    IOQ_BYTES_EXPECTED(q, bytes_expected);
-    if ( ( bytes_written = writev(fd, IOQ_GET_NV(q), nodes_ready) ) < bytes_expected )
+    size_t  bytes_expected = 0, nodes_ready = IOQ_NODES_READY(q), i;
+    ssize_t bytes_written, nodes_written  = 0;
+
+    for (i = 0; i < nodes_ready; ++i)
+        bytes_expected += IOQ_GET_NV(q,i)->iov_len;
+
+    if ( ( bytes_written = writev(fd, IOQ_GET_NV(q,0), nodes_ready) ) < bytes_expected )
         switch (bytes_written) {
             case -1:
                 return -1;
             default:
-                while ( ( bytes_written -= IOQ_GET_NV(q)->iov_len ) > 0 ) {
+                while ( ( bytes_written -= IOQ_GET_NV(q,0)->iov_len ) > 0 ) {
                     IOQ_FIN_WRITE(q, 1);
                     ++nodes_written;
                 }
                 if ( bytes_written < 0 ) {
-                    IOQ_GET_NV(q)->iov_base += IOQ_GET_NV(q)->iov_len + bytes_written;
-                    IOQ_GET_NV(q)->iov_len   = -bytes_written;
+                    IOQ_GET_NV(q,0)->iov_base += IOQ_GET_NV(q,0)->iov_len + bytes_written;
+                    IOQ_GET_NV(q,0)->iov_len   = -bytes_written;
                 }
                 return nodes_written;
         }
     else {
-        IOQ_FIN_WRITE((q), nodes_ready);
+        IOQ_FIN_WRITE(q, nodes_ready);
         return nodes_ready;
     }
 }
