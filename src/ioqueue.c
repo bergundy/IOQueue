@@ -40,6 +40,15 @@
 
 #include "ioqueue.h"
 
+#define IOQ_DUMP_FIN(q, n) do {                        \
+    size_t __iter;                                     \
+    for ( __iter = 0; __iter < (n); ++__iter ) {       \
+        if ( AQ_REAR_(q)->autofree )                   \
+            free(AQ_REAR_(q)->vec->iov_base);          \
+        AQ_DEQ_FIN(q);                                 \
+    }                                                  \
+} while (0)
+
 ioq *ioq_new(size_t size)
 {
     register size_t i;
@@ -71,38 +80,54 @@ nodes_malloc_error:
     return NULL;
 }
 
+void ioq_enq_(ioq *q, void *data, ssize_t data_len, int autofree)
+{
+    AQ_FRONT_(q)->vec->iov_base = data;
+    AQ_FRONT_(q)->vec->iov_len  = data_len;
+    AQ_FRONT_(q)->autofree      = autofree;
+    AQ_ENQ_FIN(q);
+}
+
+int ioq_enq(ioq *q, void *data, ssize_t data_len, int autofree)
+{
+    if (AQ_FULL(q)) return 0;
+
+    ioq_enq_(q, data, data_len, autofree);
+    return 1;
+}
+
 void ioq_free(ioq *q)
 {
-    IOQ_FIN_WRITE(q, q->used);
+    IOQ_DUMP_FIN(q, q->used);
     free(q->nodes);
     free(q);
 }
 
-ssize_t ioq_write(ioq *q, int fd)
+ssize_t ioq_dump(ioq *q, int fd)
 {
     size_t  bytes_expected = 0, nodes_ready = IOQ_NODES_READY(q), i;
     ssize_t bytes_written, nodes_written  = 0;
 
     for (i = 0; i < nodes_ready; ++i)
-        bytes_expected += IOQ_GET_NV(q,i)->iov_len;
+        bytes_expected += IOQ_PEEK_POS(q,i)->iov_len;
 
-    if ( ( bytes_written = writev(fd, IOQ_GET_NV(q,0), nodes_ready) ) < bytes_expected )
+    if ( ( bytes_written = writev(fd, IOQ_REAR_(q), nodes_ready) ) < bytes_expected )
         switch (bytes_written) {
             case -1:
                 return -1;
             default:
-                while ( ( bytes_written -= IOQ_GET_NV(q,0)->iov_len ) > 0 ) {
-                    IOQ_FIN_WRITE(q, 1);
+                while ( ( bytes_written -= IOQ_REAR_(q)->iov_len ) > 0 ) {
+                    IOQ_DUMP_FIN(q, 1);
                     ++nodes_written;
                 }
                 if ( bytes_written < 0 ) {
-                    IOQ_GET_NV(q,0)->iov_base += IOQ_GET_NV(q,0)->iov_len + bytes_written;
-                    IOQ_GET_NV(q,0)->iov_len   = -bytes_written;
+                    IOQ_REAR_(q)->iov_base += IOQ_REAR_(q)->iov_len + bytes_written;
+                    IOQ_REAR_(q)->iov_len   = -bytes_written;
                 }
                 return nodes_written;
         }
     else {
-        IOQ_FIN_WRITE(q, nodes_ready);
+        IOQ_DUMP_FIN(q, nodes_ready);
         return nodes_ready;
     }
 }
